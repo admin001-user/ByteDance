@@ -20,7 +20,7 @@ This project is a short-form video application similar to TikTok, built for Andr
 
 1.  Clone the repository:
     ```
-    git clone https://github.com/your-username/bytedance-tiktok-clone.git
+    git clone https://github.com/admin001-user/ByteDance.git
     ```
 2.  Open the project in Android Studio.
 3.  Connect an Android device or start an emulator.
