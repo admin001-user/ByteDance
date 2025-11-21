@@ -2,6 +2,7 @@ package com.example.bytedance.adapter;
 
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
+import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
@@ -28,6 +29,14 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
     @Override
     public void onBindViewHolder(@NonNull VideoViewHolder holder, int position) {
         holder.bind(videos.get(position));
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                int pos = holder.getBindingAdapterPosition();
+                if (pos != androidx.recyclerview.widget.RecyclerView.NO_POSITION) {
+                    listener.onVideoClick(pos, holder.binding.thumbnail);
+                }
+            }
+        });
     }
 
     @Override
@@ -45,14 +54,20 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
 
         public void bind(VideoItem video) {
             binding.description.setText(video.description);
+            binding.author.setText(video.author);
             Glide.with(binding.thumbnail.getContext())
                     .load(video.thumbnailUrl)
                     .into(binding.thumbnail);
-
-            itemView.setOnClickListener(v -> {
-                android.content.Intent intent = new android.content.Intent(v.getContext(), com.example.bytedance.PlayerActivity.class);
-                v.getContext().startActivity(intent);
-            });
         }
+    }
+
+    public interface OnVideoClickListener {
+        void onVideoClick(int position, View thumbnailView);
+    }
+
+    private OnVideoClickListener listener;
+
+    public void setOnVideoClickListener(OnVideoClickListener listener) {
+        this.listener = listener;
     }
 }

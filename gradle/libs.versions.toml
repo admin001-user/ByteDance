@@ -12,6 +12,7 @@ viewpager2 = "1.1.0"
 exoplayer = "2.19.1"
 glide = "4.16.0"
 navigation = "2.7.7"
+swiperefreshlayout = "1.1.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -27,6 +28,7 @@ exoplayer = { group = "com.google.android.exoplayer", name = "exoplayer", versio
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
 navigation-fragment = { group = "androidx.navigation", name = "navigation-fragment", version.ref = "navigation" }
 navigation-ui = { group = "androidx.navigation", name = "navigation-ui", version.ref = "navigation" }
+swiperefreshlayout = { group = "androidx.swiperefreshlayout", name = "swiperefreshlayout", version.ref = "swiperefreshlayout" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

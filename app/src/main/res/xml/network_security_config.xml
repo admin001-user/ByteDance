@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 仅允许指定域名的明文 HTTP；生产环境建议改为 HTTPS 或更细粒度配置 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">t69jhm6kv.hd-bkt.clouddn.com</domain>
+        <domain includeSubdomains="true">vfx.mtime.cn</domain>
+        <domain includeSubdomains="true">picsum.photos</domain>
+        <domain includeSubdomains="true">p.qqan.com</domain>
+    </domain-config>
+</network-security-config>

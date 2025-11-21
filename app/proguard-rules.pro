@@ -19,3 +19,5 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# 保留七牛云所有类和方法（避免Release模式被混淆移除）
+-keep class com.qiniu.** { *; }

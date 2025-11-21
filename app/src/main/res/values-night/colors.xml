@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 抖音风格统一色值（浅色） -->
+    <!-- 抖音风格统一色值（深色） -->
     <color name="douyinIcon">#FFFFFFFF</color>
     <color name="douyinIconLiked">#FF3B5C</color>
-    <color name="douyinText">#CCFFFFFF</color>
+    <color name="douyinText">#E6FFFFFF</color>
 </resources>

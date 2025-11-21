@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.bytedance"
-        minSdk 23
+        minSdk 24
         targetSdk 36
         versionCode 1
         versionName "1.0"
@@ -22,6 +22,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
@@ -41,6 +42,7 @@ dependencies {
     implementation libs.constraintlayout
     implementation libs.recyclerview
     implementation libs.viewpager2
+    implementation libs.swiperefreshlayout
     implementation libs.exoplayer
     implementation libs.glide
     implementation libs.navigation.fragment

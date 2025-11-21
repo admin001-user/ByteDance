@@ -19,5 +19,5 @@
     <item
         android:id="@+id/navigation_profile"
         android:icon="@android:drawable/ic_menu_my_calendar"
-        android:title="Profile" />
+        android:title="Mine" />
 </menu>

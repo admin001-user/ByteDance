@@ -33,6 +33,7 @@ public class VideoPlayerAdapter extends RecyclerView.Adapter<VideoPlayerAdapter.
 
     @Override
     public void onBindViewHolder(@NonNull VideoPlayerViewHolder holder, int position) {
+        // 仅绑定数据，播放器绑定由外部控制，确保只有当前页持有播放器
         holder.bind(videos.get(position));
     }
 
@@ -45,7 +46,7 @@ public class VideoPlayerAdapter extends RecyclerView.Adapter<VideoPlayerAdapter.
         this.player = player;
     }
 
-    class VideoPlayerViewHolder extends RecyclerView.ViewHolder {
+    public static class VideoPlayerViewHolder extends RecyclerView.ViewHolder {
         private final ItemVideoPlayerBinding binding;
 
         public VideoPlayerViewHolder(ItemVideoPlayerBinding binding) {
@@ -54,23 +55,7 @@ public class VideoPlayerAdapter extends RecyclerView.Adapter<VideoPlayerAdapter.
         }
 
         public void bind(VideoItem video) {
-            binding.playerView.setPlayer(player);
-            MediaItem mediaItem = MediaItem.fromUri(video.videoUrl);
-            player.setMediaItem(mediaItem);
-            player.prepare();
-            player.setPlayWhenReady(true);
-
-            player.addListener(new Player.Listener() {
-                @Override
-                public void onPlaybackStateChanged(int state) {
-                    if (state == Player.STATE_BUFFERING) {
-                        binding.progressBar.setVisibility(View.VISIBLE);
-                    } else {
-                        binding.progressBar.setVisibility(View.GONE);
-                    }
-                }
-            });
-
+            // 不在此处切换媒体，避免离屏项影响当前播放
             binding.commentButton.setOnClickListener(v -> {
                 CommentPanelFragment commentPanelFragment = new CommentPanelFragment();
                 if (itemView.getContext() instanceof AppCompatActivity) {
@@ -78,6 +63,13 @@ public class VideoPlayerAdapter extends RecyclerView.Adapter<VideoPlayerAdapter.
                     commentPanelFragment.show(activity.getSupportFragmentManager(), commentPanelFragment.getTag());
                 }
             });
+
+            // 单列播放时显示描述文案
+            binding.descriptionText.setText(video.description);
+        }
+
+        public ItemVideoPlayerBinding getBinding() {
+            return binding;
         }
     }
 }

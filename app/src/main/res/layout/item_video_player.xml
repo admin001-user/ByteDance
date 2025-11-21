@@ -2,13 +2,83 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
 
     <com.google.android.exoplayer2.ui.PlayerView
         android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:use_controller="false" />
+        app:resize_mode="fill"
+        app:shutter_background_color="@android:color/transparent"
+        app:surface_type="texture_view"
+        app:use_artwork="false"
+        app:use_controller="false" >
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|center_vertical"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <ImageButton
+                android:id="@+id/like_button"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/ic_douyin_like_1"
+                app:tint="@color/douyinIcon" />
+
+            <TextView
+                android:id="@+id/like_count_text"
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:text="0"
+                android:textColor="@color/douyinText"
+                android:textSize="12sp" />
+
+            <ImageButton
+                android:id="@+id/comment_button"
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/comment_dots"
+                app:tint="@color/douyinIcon" />
+
+            <TextView
+                android:id="@+id/comment_count_text"
+                android:layout_width="35dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:text="0"
+                android:textColor="@color/douyinText"
+                android:textSize="12sp" />
+
+            <ImageButton
+                android:id="@+id/share_button"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="16dp"
+                android:background="@android:color/transparent"
+                android:src="@drawable/ic_douyin_share"
+                app:tint="@color/douyinIcon" />
+
+            <TextView
+                android:id="@+id/share_count_text"
+                android:layout_width="36dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center"
+                android:text="0"
+                android:textColor="@color/douyinText"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </com.google.android.exoplayer2.ui.PlayerView>
 
     <ProgressBar
         android:id="@+id/progressBar"
@@ -16,35 +86,93 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center" />
 
+    <!-- 暂停叠层图标 -->
+    <ImageView
+        android:id="@+id/pauseOverlay"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="center"
+        android:alpha="0.85"
+        android:visibility="gone"
+        android:src="@android:drawable/ic_media_play" />
+
+    <!-- 底部控制条：包含「描述文案+时间文本+进度条」，统一管理间距 -->
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:id="@+id/controlBar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="end|center_vertical"
+        android:layout_gravity="bottom"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="12dp"
+        android:paddingBottom="24dp">
 
-        <ImageButton
-            android:id="@+id/like_button"
-            android:layout_width="wrap_content"
+    <!-- 第一步：描述文案（移到controlBar内，放在进度条上方） -->
+        <TextView
+            android:id="@+id/descriptionText"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_menu_myplaces" />
+            android:textColor="@android:color/white"
+            android:textSize="14sp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="60dp"
+            android:layout_marginBottom="8dp" />  <!-- 控制文案与下方进度条的距离（核心！） -->
 
-        <ImageButton
-            android:id="@+id/comment_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_menu_edit" />
+    <!-- 第二行：左右时间文本 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
 
-        <ImageButton
-            android:id="@+id/share_button"
-            android:layout_width="wrap_content"
+        <TextView
+            android:id="@+id/currentTimeText"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:background="@android:color/transparent"
-            android:src="@android:drawable/ic_menu_share" />
+            android:layout_weight="1"
+            android:textColor="@android:color/white"
+            android:text="00:00"
+            android:textSize="12sp"
+            android:textAlignment="viewStart"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/totalTimeText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@android:color/white"
+            android:text="00:00"
+            android:textSize="12sp"
+            android:textAlignment="viewEnd"
+            android:visibility="gone" />
+        </LinearLayout>
+
+    <!-- 第三行：进度条 -->
+        <SeekBar
+            android:id="@+id/seekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:max="1000"
+            android:progress="0"
+            android:progressTint="@android:color/white"
+            android:thumbTint="@android:color/white"
+            android:alpha="0.6" />
     </LinearLayout>
+
+    <!-- 拖动时的缩略图预览 -->
+    <ImageView
+        android:id="@+id/thumbnailPreview"
+        android:layout_width="120dp"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="56dp"
+        android:scaleType="centerCrop"
+        android:background="#66000000"
+        android:visibility="gone" />
 
 </FrameLayout>

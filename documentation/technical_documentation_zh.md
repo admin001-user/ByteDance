@@ -19,7 +19,19 @@
 *   **布局**：使用带有 `GridLayoutManager` 的 `RecyclerView` 实现，以显示两列视频缩略图。
 *   **适配器**：`VideoAdapter` 负责将视频数据绑定到 `item_video.xml` 布局。
 *   **导航**：单击视频缩略图会将用户导航到 `PlayerActivity`。
-##### 2.1.1.2. `res` 目录
+### 3.2. 单列视频播放器
+
+*   **布局**：使用 `ViewPager2` 实现，以允许用户在视频之间垂直滑动。
+*   **视频播放**：`ExoPlayer` 用于视频播放。`ViewPager2` 中的每个视频都有自己的 `ExoPlayer` 实例。
+*   **适配器**：`VideoPlayerAdapter` 负责管理 `ExoPlayer` 实例并将视频数据绑定到 `item_video_player.xml` 布局。
+
+### 3.3. 评论面板
+
+*   **UI**：评论面板实现为从屏幕底部向上滑动的 `BottomSheetDialogFragment`。
+*   **布局**：`fragment_comment_panel.xml` 布局包含一个用于显示评论的 `RecyclerView` 和一个用于添加新评论的 `EditText`。
+*   **适配器**：`CommentAdapter` 负责将评论数据绑定到 `item_comment.xml` 布局。
+*   **功能**：用户可以添加新评论，然后将其添加到 `RecyclerView` 并显示在列表底部。
+### 3.4. `res` 目录
 
 `res` 目录包含了所有的应用程序资源，这些资源被划分为不同的子目录：
 
