@@ -8,20 +8,48 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@android:color/white">
 
-        <!-- 封面高度自适应：按宽高比 1:1.5 计算高度，避免过高 -->
-        <ImageView
-            android:id="@+id/thumbnail"
+        <!-- 封面容器：用于叠加时长、头像等信息 -->
+        <FrameLayout
+            android:id="@+id/coverContainer"
             android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:scaleType="centerCrop"
+            android:layout_height="wrap_content"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintDimensionRatio="1:1.5" />
+            >
 
-        <!-- 文案高度随文本自适应，整体 Item 高度 wrap_content -->
+            <!-- 视频封面图，支持共享元素转场 -->
+            <ImageView
+                android:id="@+id/thumbnail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:scaleType="fitCenter"
+                android:transitionName="video_thumbnail" />
+
+            <!-- 右下角时长文本（mm:ss） -->
+            <TextView
+                android:id="@+id/tvDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="6dp"
+                android:paddingLeft="6dp"
+                android:paddingRight="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:textColor="@android:color/white"
+                android:textSize="12sp"
+                android:background="#66000000"
+                android:text="00:00" />
+
+            <!-- 移除叠加头像，改为下方同一行展示作者与点赞 -->
+        </FrameLayout>
+
+        <!-- 描述置于封面下方，固定在卡片上半部；超长省略 -->
         <TextView
             android:id="@+id/description"
             android:layout_width="0dp"
@@ -29,25 +57,53 @@
             android:padding="8dp"
             android:maxLines="2"
             android:ellipsize="end"
-            app:layout_constraintTop_toBottomOf="@id/thumbnail"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/coverContainer" />
 
-        <!-- 作者一行显示，过长省略 -->
-        <TextView
-            android:id="@+id/author"
+        <!-- 作者头像+名称+点赞，同一行显示在描述下方 -->
+        <LinearLayout
+            android:id="@+id/metaRow"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
             android:paddingBottom="8dp"
-            android:maxLines="1"
-            android:ellipsize="end"
-            android:textSize="12sp"
             app:layout_constraintTop_toBottomOf="@id/description"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageView
+                android:id="@+id/ivAvatar"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_launcher_foreground"
+                android:background="@drawable/circle_bg" />
+
+            <TextView
+                android:id="@+id/author"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:layout_weight="1"
+                android:paddingStart="8dp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/tvLikes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_vertical"
+                android:textSize="12sp"
+                android:textColor="#666666"
+                android:text="0" />
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

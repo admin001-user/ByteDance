@@ -5,11 +5,21 @@
     android:layout_height="match_parent"
     android:background="@android:color/black">
 
+    <!-- 背景美化层：使用缩放封面图填充，避免 FIT 模式出现黑边时不美观 -->
+    <ImageView
+        android:id="@+id/bgArtwork"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:alpha="0.4"
+        android:src="@drawable/ic_launcher_background"/>
+
     <com.google.android.exoplayer2.ui.PlayerView
         android:id="@+id/player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:resize_mode="fill"
+        android:transitionName="video_thumbnail"
+        app:resize_mode="fit"
         app:shutter_background_color="@android:color/transparent"
         app:surface_type="texture_view"
         app:use_artwork="false"
@@ -21,6 +31,33 @@
             android:layout_gravity="end|center_vertical"
             android:orientation="vertical"
             android:padding="16dp">
+
+            <!-- 头像 + 关注按钮（右侧操作区顶部） -->
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="58dp"
+                android:layout_marginBottom="12dp">
+                
+                <ImageView
+                    android:id="@+id/author_avatar"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="top|center_horizontal"
+                    android:background="@drawable/circle_bg"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_launcher_foreground"/>
+                    
+                <ImageView
+                    android:id="@+id/follow_button"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:background="@drawable/circle_bg_white"
+                    android:padding="2dp"
+                    android:scaleType="fitCenter"
+                    android:src="@android:drawable/ic_input_add"
+                    app:tint="@android:color/holo_red_light"/>
+            </FrameLayout>
 
             <ImageButton
                 android:id="@+id/like_button"
@@ -106,6 +143,22 @@
         android:padding="12dp"
         android:paddingBottom="24dp">
 
+        <!-- 作者名称 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="6dp">
+            <TextView
+                android:id="@+id/authorNameText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="14sp"
+                android:text="@作者"/>
+        </LinearLayout>
+
     <!-- 第一步：描述文案（移到controlBar内，放在进度条上方） -->
         <TextView
             android:id="@+id/descriptionText"
@@ -136,8 +189,7 @@
             android:textColor="@android:color/white"
             android:text="00:00"
             android:textSize="12sp"
-            android:textAlignment="viewStart"
-            android:visibility="gone" />
+            android:textAlignment="viewStart" />
 
         <TextView
             android:id="@+id/totalTimeText"
@@ -147,8 +199,7 @@
             android:textColor="@android:color/white"
             android:text="00:00"
             android:textSize="12sp"
-            android:textAlignment="viewEnd"
-            android:visibility="gone" />
+            android:textAlignment="viewEnd" />
         </LinearLayout>
 
     <!-- 第三行：进度条 -->
@@ -174,5 +225,25 @@
         android:scaleType="centerCrop"
         android:background="#66000000"
         android:visibility="gone" />
+
+    <!-- 双击点赞心形动画层 -->
+    <ImageView
+        android:id="@+id/likeAnim"
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_douyin_like_1"
+        android:tint="@color/douyinIconLiked"
+        android:visibility="gone"/>
+
+    <!-- 右下角音乐唱片（播放时旋转） -->
+    <ImageView
+        android:id="@+id/musicDisc"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="96dp"
+        android:src="@drawable/music_box"/>
 
 </FrameLayout>

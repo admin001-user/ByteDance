@@ -45,6 +45,7 @@ dependencies {
     implementation libs.swiperefreshlayout
     implementation libs.exoplayer
     implementation libs.glide
+    implementation 'jp.wasabeef:glide-transformations:4.3.0'
     implementation libs.navigation.fragment
     implementation libs.navigation.ui
     testImplementation libs.junit

@@ -53,11 +53,34 @@ public class VideoAdapter extends RecyclerView.Adapter<VideoAdapter.VideoViewHol
         }
 
         public void bind(VideoItem video) {
+            // 文案与作者
             binding.description.setText(video.description);
             binding.author.setText(video.author);
+
+            // 封面图（共享元素转场目标）
             Glide.with(binding.thumbnail.getContext())
                     .load(video.thumbnailUrl)
+                    .placeholder(android.R.color.darker_gray)
+                    .fitCenter()
                     .into(binding.thumbnail);
+
+            // 头像（左下角圆形）
+            if (video.avatarUrl != null) {
+                Glide.with(binding.ivAvatar.getContext())
+                        .load(video.avatarUrl)
+                        .placeholder(android.R.color.darker_gray)
+                        .circleCrop()
+                        .into(binding.ivAvatar);
+            }
+
+            // 时长（mm:ss）
+            long totalSec = Math.max(0, video.durationMs / 1000);
+            long m = (totalSec % 3600) / 60;
+            long s = totalSec % 60;
+            binding.tvDuration.setText(String.format(java.util.Locale.getDefault(), "%02d:%02d", m, s));
+
+            // 点赞数
+            binding.tvLikes.setText(String.valueOf(Math.max(0, video.likeCount)));
         }
     }
 

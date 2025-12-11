@@ -12,6 +12,7 @@ import com.example.bytedance.data.MockData;
 import com.example.bytedance.databinding.ActivityMainBinding;
 import com.example.bytedance.databinding.ItemVideoPlayerBinding;
 import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.Player;
@@ -34,6 +35,20 @@ import android.widget.ImageButton;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.animation.ObjectAnimator;
+import android.view.animation.LinearInterpolator;
+import android.text.Layout;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.TextUtils;
+import android.text.method.LinkMovementMethod;
+import android.text.style.ClickableSpan;
+import android.text.TextPaint;
+
+import androidx.lifecycle.ViewModelProvider;
+import com.example.bytedance.viewmodel.VideoViewModel;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -41,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isTwoColumn = true;
     private ExoPlayer player;
     private VideoPlayerAdapter playerAdapter;
+    private VideoViewModel videoViewModel;
     private List<com.example.bytedance.model.VideoItem> videos;
     private boolean isLoadingMore = false;
     private int nextPageIndex = 1;
@@ -99,6 +115,13 @@ public class MainActivity extends AppCompatActivity {
     private final java.util.Map<String, Integer> likeCountMap = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> commentCountMap = new java.util.HashMap<>();
     private final java.util.Map<String, Integer> shareCountMap = new java.util.HashMap<>();
+    private final java.util.Map<String, Boolean> followMap = new java.util.HashMap<>();
+    private WeakReference<android.widget.ImageView> likeAnimRef;
+    private WeakReference<android.widget.ImageView> musicDiscRef;
+    private WeakReference<android.widget.ImageView> authorAvatarRef;
+    private WeakReference<android.widget.ImageView> followButtonRef;
+    private WeakReference<android.widget.TextView> authorNameTextRef;
+    private ObjectAnimator discRotateAnimator;
 
     private void updateThumbPreview(long ms) {
         ImageView iv = currentThumbPreviewRef != null ? currentThumbPreviewRef.get() : null;
@@ -188,7 +211,57 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         ((AppCompatActivity) this).setContentView(binding.getRoot());
 
-        videos = MockData.getVideos();
+        // 顶部 Tab + ViewPager2：推荐/关注/同城
+        binding.swipeRefreshGrid.setVisibility(android.view.View.GONE);
+        binding.swipeRefreshPager.setVisibility(android.view.View.GONE);
+        if (binding.tabsPager != null) {
+            binding.tabsPager.setAdapter(new com.example.bytedance.ui.HomePagerAdapter(this));
+            new TabLayoutMediator(binding.tabLayout, binding.tabsPager, (tab, position) -> {
+                switch (position) {
+                    case 0: tab.setText("推荐"); break;
+                    case 1: tab.setText("关注"); break;
+                    case 2: tab.setText("同城"); break;
+                }
+            }).attach();
+        }
+
+        videoViewModel = new ViewModelProvider(this).get(VideoViewModel.class);
+        videos = new java.util.ArrayList<>();
+
+        videoViewModel.getVideoList().observe(this, newVideos -> {
+            boolean isRefreshing = binding.swipeRefreshPager.isRefreshing() || binding.swipeRefreshGrid.isRefreshing();
+            videos.clear();
+            videos.addAll(newVideos);
+            
+            // Ensure first video is different from current if refreshing
+            if (isRefreshing && currentVideoUrl != null && !videos.isEmpty() && currentVideoUrl.equals(videos.get(0).videoUrl)) {
+                 int swap = -1;
+                 for (int i = 1; i < videos.size(); i++) {
+                     if (!currentVideoUrl.equals(videos.get(i).videoUrl)) { swap = i; break; }
+                 }
+                 if (swap != -1) {
+                     com.example.bytedance.model.VideoItem tmp = videos.get(0);
+                     videos.set(0, videos.get(swap));
+                     videos.set(swap, tmp);
+                 }
+            }
+            
+            if (binding.recyclerView.getAdapter() != null) binding.recyclerView.getAdapter().notifyDataSetChanged();
+            if (playerAdapter != null) playerAdapter.notifyDataSetChanged();
+
+            binding.swipeRefreshGrid.setRefreshing(false);
+            binding.swipeRefreshPager.setRefreshing(false);
+
+            if (isRefreshing && !isTwoColumn) {
+                 binding.viewPager.setCurrentItem(0, false);
+                 binding.viewPager.post(() -> {
+                     switchToVideo(0);
+                     attachProgressForPosition(0);
+                 });
+            }
+        });
+        videoViewModel.loadVideos();
+
         VideoAdapter videoAdapter = new VideoAdapter(videos);
         StaggeredGridLayoutManager sglm = new StaggeredGridLayoutManager(isTwoColumn ? 2 : 1, RecyclerView.VERTICAL);
         sglm.setGapStrategy(StaggeredGridLayoutManager.GAP_HANDLING_NONE);
@@ -204,6 +277,9 @@ public class MainActivity extends AppCompatActivity {
         binding.recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@androidx.annotation.NonNull RecyclerView recyclerView, int dx, int dy) {
+                // 只有滚动到顶时允许下拉刷新，避免瀑布流顶部不在 0 时无法触发
+                boolean atTop = recyclerView.computeVerticalScrollOffset() == 0;
+                binding.swipeRefreshGrid.setEnabled(atTop);
                 if (dy <= 0) return;
                 RecyclerView.LayoutManager lm = recyclerView.getLayoutManager();
                 if (lm instanceof StaggeredGridLayoutManager) {
@@ -216,9 +292,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // 顶部导航：单双列切换
-        binding.tabLayout.removeAllTabs();
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("推荐 🔁"));
+        // 顶部导航：由 TabLayoutMediator 驱动，无需手动添加 Tab
 
         // 初始化缓存与预取
         CacheManager.init(getApplicationContext());
@@ -258,53 +332,21 @@ public class MainActivity extends AppCompatActivity {
                 if (position >= videos.size() - 2) {
                     loadMoreVideos();
                 }
+                // 只有当前页在顶部时允许下拉刷新
+                binding.swipeRefreshPager.setEnabled(!binding.viewPager.canScrollVertically(-1));
+            }
+            @Override
+            public void onPageScrollStateChanged(int state) {
+                if (state == ViewPager2.SCROLL_STATE_IDLE) {
+                    // 重新评估是否在顶部以启用下拉刷新
+                    binding.swipeRefreshPager.setEnabled(!binding.viewPager.canScrollVertically(-1));
+                }
             }
         });
 
-        android.view.View.OnClickListener toggleListener = v -> {
-            isTwoColumn = !isTwoColumn;
-            if (isTwoColumn) {
-                // 切换到双列外流
-                binding.viewPager.animate().alpha(0f).setDuration(150).withEndAction(() -> {
-                    binding.viewPager.setVisibility(android.view.View.GONE);
-                    binding.swipeRefreshPager.setVisibility(android.view.View.GONE);
-                    player.pause();
-                    binding.swipeRefreshGrid.setVisibility(android.view.View.VISIBLE);
-                    binding.recyclerView.setVisibility(android.view.View.VISIBLE);
-                    binding.recyclerView.setLayoutManager(new GridLayoutManager(MainActivity.this, 2));
-                    binding.recyclerView.animate().alpha(1f).setDuration(150).start();
-                    // 永久移除右上角/右下角切换按钮
-                    binding.modeFab.setVisibility(android.view.View.GONE);
-                    if (binding.toggleButton != null) binding.toggleButton.setVisibility(android.view.View.GONE);
-                    updateTabTitle();
-                }).start();
-            } else {
-                // 切换到单列内流（主界面直接播放）
-                binding.recyclerView.animate().scaleX(1.05f).scaleY(1.05f).alpha(0f).setDuration(150).withEndAction(() -> {
-                    binding.recyclerView.setVisibility(android.view.View.GONE);
-                    binding.swipeRefreshGrid.setVisibility(android.view.View.GONE);
-                    binding.viewPager.setAlpha(0f);
-                    binding.swipeRefreshPager.setVisibility(android.view.View.VISIBLE);
-                    binding.viewPager.setVisibility(android.view.View.VISIBLE);
-                    binding.viewPager.animate().alpha(1f).setDuration(150).start();
-                    binding.modeFab.setVisibility(android.view.View.GONE);
-                    if (binding.toggleButton != null) binding.toggleButton.setVisibility(android.view.View.GONE);
-                    if (!videos.isEmpty()) {
-                        switchToVideo(binding.viewPager.getCurrentItem());
-                        attachProgressForPosition(binding.viewPager.getCurrentItem());
-                    }
-                    updateTabTitle();
-                }).start();
-            }
-        };
-        // 去除右上角/右下角单双切换按钮，改为点击“推荐”切换
+        // 移除基于 Tab 的单双列切换监听与相关按钮
         if (binding.toggleButton != null) binding.toggleButton.setVisibility(android.view.View.GONE);
         binding.modeFab.setVisibility(android.view.View.GONE);
-        binding.tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-            @Override public void onTabSelected(TabLayout.Tab tab) { toggleListener.onClick(binding.tabLayout); }
-            @Override public void onTabUnselected(TabLayout.Tab tab) {}
-            @Override public void onTabReselected(TabLayout.Tab tab) { toggleListener.onClick(binding.tabLayout); }
-        });
         updateTabTitle();
 
         // 点击封面进入内流并定位到对应视频
@@ -452,12 +494,29 @@ public class MainActivity extends AppCompatActivity {
 
     private void attachProgressForPosition(int position) {
         RecyclerView rv = (RecyclerView) binding.viewPager.getChildAt(0);
+        if (rv == null) {
+            binding.viewPager.post(() -> attachProgressForPosition(position));
+            return;
+        }
         RecyclerView.ViewHolder vh = rv.findViewHolderForAdapterPosition(position);
+        if (vh == null) {
+            // ViewHolder might not be ready yet, retry after a short delay
+            binding.viewPager.postDelayed(() -> attachProgressForPosition(position), 50);
+            return;
+        }
         if (vh instanceof com.example.bytedance.adapter.VideoPlayerAdapter.VideoPlayerViewHolder) {
             ItemVideoPlayerBinding itemBinding = ((com.example.bytedance.adapter.VideoPlayerAdapter.VideoPlayerViewHolder) vh).getBinding();
             // 先解绑旧视图，避免多个视图竞争同一 Player 导致黑屏
             com.google.android.exoplayer2.ui.PlayerView oldPv = currentPlayerViewRef != null ? currentPlayerViewRef.get() : null;
-            if (oldPv != null) oldPv.setPlayer(null);
+            // 优化：如果新旧视图相同，不需要解绑再绑定
+            if (oldPv != null && oldPv != itemBinding.playerView) {
+                oldPv.setPlayer(null);
+            }
+
+            // 强制重置 Player 以确保 Surface 正确绑定（解决滑动返回时有声音无画面/进度条动无画面问题）
+            if (itemBinding.playerView.getPlayer() == player) {
+                itemBinding.playerView.setPlayer(null);
+            }
 
             // 绑定新视图与进度
             currentProgressRef = new WeakReference<>(itemBinding.progressBar);
@@ -468,6 +527,11 @@ public class MainActivity extends AppCompatActivity {
             totalTimeTextRef = new WeakReference<>(itemBinding.totalTimeText);
             currentThumbPreviewRef = new WeakReference<>(itemBinding.thumbnailPreview);
             currentDescriptionRef = new WeakReference<>(itemBinding.descriptionText);
+            likeAnimRef = new WeakReference<>(itemBinding.likeAnim);
+            musicDiscRef = new WeakReference<>(itemBinding.musicDisc);
+            authorAvatarRef = new WeakReference<>(itemBinding.authorAvatar);
+            followButtonRef = new WeakReference<>(itemBinding.followButton);
+            authorNameTextRef = new WeakReference<>(itemBinding.authorNameText);
             // 默认不显示时间文本，避免与进度条重叠
             if (itemBinding.currentTimeText != null) itemBinding.currentTimeText.setVisibility(android.view.View.GONE);
             if (itemBinding.totalTimeText != null) itemBinding.totalTimeText.setVisibility(android.view.View.GONE);
@@ -479,6 +543,19 @@ public class MainActivity extends AppCompatActivity {
             TextView likeCountText = itemBinding.likeCountText;
             TextView commentCountText = itemBinding.commentCountText;
             TextView shareCountText = itemBinding.shareCountText;
+            // 作者名绑定与描述可展开
+            if (authorNameTextRef != null) {
+                TextView tv = authorNameTextRef.get();
+                if (tv != null && position >= 0 && position < videos.size()) {
+                    String author = videos.get(position).author;
+                    tv.setText("@" + (author == null ? "作者" : author));
+                }
+            }
+            TextView desc = currentDescriptionRef != null ? currentDescriptionRef.get() : null;
+            if (desc != null && position >= 0 && position < videos.size()) {
+                String full = videos.get(position).description == null ? "" : videos.get(position).description;
+                applyExpandableDescription(desc, full);
+            }
             if (likeBtn != null && currentVideoUrl != null) {
                 final String url = currentVideoUrl;
                 if (!likeCountMap.containsKey(url)) likeCountMap.put(url, 1000 + rand.nextInt(9000));
@@ -540,14 +617,27 @@ public class MainActivity extends AppCompatActivity {
                 pv.setResizeMode(com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM);
                 pv.setKeepContentOnPlayerReset(false);
                 pv.setPlayer(player);
+                // 单击播放/暂停 + 双击点赞
+                GestureDetector detector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+                    @Override
+                    public boolean onSingleTapConfirmed(MotionEvent e) {
+                        if (player.isPlaying()) player.pause(); else player.play();
+                        return true;
+                    }
 
-                pv.setOnClickListener(v -> {
-                    if (player.isPlaying()) {
-                        player.pause();
-                    } else {
-                        player.play();
+                    @Override
+                    public boolean onDoubleTap(MotionEvent e) {
+                        if (currentVideoUrl == null) return true;
+                        boolean liked = Boolean.TRUE.equals(likedMap.get(currentVideoUrl));
+                        likedMap.put(currentVideoUrl, true);
+                        likeCountMap.put(currentVideoUrl, likeCountMap.getOrDefault(currentVideoUrl, 0) + (liked ? 0 : 1));
+                        if (likeCountText != null) likeCountText.setText(formatCount(likeCountMap.get(currentVideoUrl)));
+                        if (likeBtn != null) likeBtn.setColorFilter(ContextCompat.getColor(MainActivity.this, R.color.douyinIconLiked));
+                        showHeartAnim();
+                        return true;
                     }
                 });
+                pv.setOnTouchListener((v, event) -> detector.onTouchEvent(event));
             }
 
             // 设置进度条拖动
@@ -610,6 +700,28 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
             }
+
+            // 关注按钮逻辑（头像右下角 + 号）
+            if (followButtonRef != null) {
+                android.widget.ImageView fb = followButtonRef.get();
+                android.widget.ImageView avatar = authorAvatarRef != null ? authorAvatarRef.get() : null;
+                String author = position >= 0 && position < videos.size() ? videos.get(position).author : "作者";
+                boolean followed = Boolean.TRUE.equals(followMap.get(author));
+                if (fb != null) {
+                    fb.setAlpha(followed ? 0.0f : 1.0f);
+                    fb.setOnClickListener(v -> {
+                        boolean f = Boolean.TRUE.equals(followMap.get(author));
+                        followMap.put(author, !f);
+                        fb.animate().alpha(!f ? 0.0f : 1.0f).setDuration(160).start();
+                        android.widget.Toast.makeText(MainActivity.this, !f ? "已关注" : "已取消关注", android.widget.Toast.LENGTH_SHORT).show();
+                    });
+                }
+                if (avatar != null) {
+                    avatar.setOnClickListener(v -> {
+                        android.widget.Toast.makeText(MainActivity.this, "作者主页暂未实现", android.widget.Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
         }
         // 全局缓冲监听（只更新当前项）
         player.addListener(new Player.Listener() {
@@ -639,18 +751,124 @@ public class MainActivity extends AppCompatActivity {
                 if (isPlaying) {
                     progressHandler.removeCallbacks(progressRunnable);
                     progressHandler.post(progressRunnable);
+                    startDiscRotate();
                 } else {
                     progressHandler.removeCallbacks(progressRunnable);
+                    stopDiscRotate();
                 }
             }
         });
     }
 
+    private void showHeartAnim() {
+        android.widget.ImageView heart = likeAnimRef != null ? likeAnimRef.get() : null;
+        if (heart == null) return;
+        heart.setVisibility(android.view.View.VISIBLE);
+        heart.setScaleX(0.1f);
+        heart.setScaleY(0.1f);
+        heart.setAlpha(0f);
+        heart.animate().alpha(1f).scaleX(1.2f).scaleY(1.2f).setDuration(150)
+                .withEndAction(() -> heart.animate().alpha(0f).scaleX(0.8f).scaleY(0.8f).setDuration(250)
+                        .withEndAction(() -> heart.setVisibility(android.view.View.GONE)).start()).start();
+    }
+
+    private void startDiscRotate() {
+        android.widget.ImageView disc = musicDiscRef != null ? musicDiscRef.get() : null;
+        if (disc == null) return;
+        if (discRotateAnimator == null) {
+            discRotateAnimator = ObjectAnimator.ofFloat(disc, "rotation", 0f, 360f);
+            discRotateAnimator.setDuration(2000);
+            discRotateAnimator.setInterpolator(new LinearInterpolator());
+            discRotateAnimator.setRepeatCount(ObjectAnimator.INFINITE);
+        }
+        if (!discRotateAnimator.isStarted()) discRotateAnimator.start();
+    }
+
+    private void stopDiscRotate() {
+        if (discRotateAnimator != null && discRotateAnimator.isRunning()) {
+            discRotateAnimator.cancel();
+        }
+    }
+
+    // 将“展开”放到描述文本末尾，初始两行，超过两行时才显示
+    private void applyExpandableDescription(TextView desc, String fullText) {
+        if (desc == null) return;
+        if (fullText == null) fullText = "";
+        final String ft = fullText;
+        // 初始为两行末尾省略
+        desc.setMaxLines(2);
+        desc.setEllipsize(TextUtils.TruncateAt.END);
+        desc.setText(ft);
+        desc.post(() -> {
+            Layout layout = desc.getLayout();
+            if (layout == null) return;
+            int lineCount = layout.getLineCount();
+            // 仅当文本超过两行或第二行被省略时显示“展开”
+            boolean needExpand = lineCount > 2 || (lineCount >= 2 && layout.getEllipsisCount(1) > 0);
+            if (!needExpand) {
+                // 不需要展开，保持原文本即可
+                return;
+            }
+            // 计算第二行末尾可见位置
+            int end = layout.getLineEnd(Math.min(1, lineCount - 1));
+            String indicator = "… 展开";
+            int reserve = indicator.length();
+            int cut = Math.max(0, end - reserve);
+            String shown = ft.substring(0, Math.min(cut, ft.length())).trim();
+            // 避免末尾已经是句号或省略
+            if (shown.endsWith("…")) {
+                indicator = " 展开"; // 已有省略则不重复
+            }
+            String display = shown + indicator;
+            SpannableString ss = new SpannableString(display);
+            int start = display.length() - ("展开").length();
+            int endSpan = display.length();
+            ss.setSpan(new ClickableSpan() {
+                @Override public void onClick(android.view.View widget) {
+                    showExpandedWithCollapse(desc, ft);
+                }
+                @Override public void updateDrawState(TextPaint ds) {
+                    ds.setColor(Color.WHITE);
+                    ds.setUnderlineText(false);
+                }
+            }, start, endSpan, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            desc.setText(ss);
+            desc.setMovementMethod(LinkMovementMethod.getInstance());
+            desc.setHighlightColor(Color.TRANSPARENT);
+        });
+    }
+
+    // 展开后在末尾追加“ 收起”可点击，点击后恢复两行省略
+    private void showExpandedWithCollapse(TextView desc, String fullText) {
+        if (desc == null) return;
+        if (fullText == null) fullText = "";
+        final String ft = fullText;
+        String indicator = " 收起";
+        String display = ft + indicator;
+        SpannableString ss = new SpannableString(display);
+        int start = display.length() - ("收起").length();
+        int end = display.length();
+        ss.setSpan(new ClickableSpan() {
+            @Override public void onClick(android.view.View widget) {
+                applyExpandableDescription(desc, ft);
+            }
+            @Override public void updateDrawState(TextPaint ds) {
+                ds.setColor(Color.WHITE);
+                ds.setUnderlineText(false);
+            }
+        }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        // 展开显示全文，并在末尾添加“收起”链接
+        desc.setMaxLines(Integer.MAX_VALUE);
+        desc.setEllipsize(null);
+        desc.setText(ss);
+        desc.setMovementMethod(LinkMovementMethod.getInstance());
+        desc.setHighlightColor(Color.TRANSPARENT);
+    }
+
     private void updateTabTitle() {
         TabLayout.Tab tab = binding.tabLayout.getTabAt(0);
         if (tab != null) {
-            String mode = isTwoColumn ? "双列" : "单列";
-            tab.setText("推荐 🔁 · " + mode);
+            tab.setText("推荐");
         }
     }
 
@@ -682,69 +900,18 @@ public class MainActivity extends AppCompatActivity {
         currentDescriptionRef = null;
     }
 
-    // 刷新数据：重置列表与播放器状态
+    // 刷新数据：委托给 ViewModel
     private void refreshVideos() {
-        isLoadingMore = false;
-        nextPageIndex = 1;
-        java.util.List<com.example.bytedance.model.VideoItem> base = MockData.getVideos();
-        videos.clear();
-        videos.addAll(base);
-        // 刷新时重排当前可见顺序，确保不是同一条
-        java.util.Collections.shuffle(videos);
-        // 若首项仍与当前播放一致，则与后面一项交换避免“还是当前视频”
-        if (currentVideoUrl != null && !videos.isEmpty() && currentVideoUrl.equals(videos.get(0).videoUrl)) {
-            int swap = -1;
-            for (int i = 1; i < videos.size(); i++) {
-                if (!currentVideoUrl.equals(videos.get(i).videoUrl)) { swap = i; break; }
-            }
-            if (swap != -1) {
-                com.example.bytedance.model.VideoItem tmp = videos.get(0);
-                videos.set(0, videos.get(swap));
-                videos.set(swap, tmp);
-            }
-        }
-        // 通知适配器刷新
-        RecyclerView.Adapter rvAdapter = binding.recyclerView.getAdapter();
-        if (rvAdapter != null) rvAdapter.notifyDataSetChanged();
-        if (playerAdapter != null) playerAdapter.notifyDataSetChanged();
-        // 刷新后回到首项：单列跳转并绑定，双列滚动到顶部
-        if (!videos.isEmpty()) {
-            int startIndex = 0;
-            if (isTwoColumn) {
-                binding.recyclerView.scrollToPosition(startIndex);
-            } else {
-                binding.viewPager.setCurrentItem(startIndex, false);
-                switchToVideo(startIndex);
-                binding.viewPager.post(() -> attachProgressForPosition(startIndex));
-            }
-        }
+        videoViewModel.refreshVideos();
     }
 
-    // 加载更多：从 MockData 派生模拟分页数据
+    // 加载更多：委托给 ViewModel
     private void loadMoreVideos() {
         if (isLoadingMore) return;
         isLoadingMore = true;
-        int start = videos.size();
-        java.util.List<com.example.bytedance.model.VideoItem> base = MockData.getVideos();
-        java.util.ArrayList<com.example.bytedance.model.VideoItem> more = new java.util.ArrayList<>();
-        int page = nextPageIndex;
-        for (int i = 0; i < base.size(); i++) {
-            com.example.bytedance.model.VideoItem b = base.get(i);
-            String suffix = "?p=" + page + "&idx=" + i;
-            more.add(new com.example.bytedance.model.VideoItem(
-                    b.videoUrl + suffix,
-                    b.thumbnailUrl + suffix,
-                    b.description + " · 第" + page + "页 · 复本" + i,
-                    b.author
-            ));
-        }
-        nextPageIndex++;
-        videos.addAll(more);
-        // 通知适配器插入区间
-        RecyclerView.Adapter rvAdapter = binding.recyclerView.getAdapter();
-        if (rvAdapter != null) rvAdapter.notifyItemRangeInserted(start, more.size());
-        if (playerAdapter != null) playerAdapter.notifyItemRangeInserted(start, more.size());
-        isLoadingMore = false;
+        videoViewModel.loadMoreVideos();
+        // 简单的防抖延迟重置
+        new Handler().postDelayed(() -> isLoadingMore = false, 1000);
     }
 
     @Override

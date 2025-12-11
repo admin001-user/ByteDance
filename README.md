@@ -1,14 +1,42 @@
-# ByteDance TikTok Clone
+# 仿抖音短视频 App 介绍文档
 
-This project is a short-form video application similar to TikTok, built for Android. It features a dual-column video feed, a single-column video player, and a comment section.
+## 1. 项目概述
+本项目是一款基于 Android 平台的高性能短视频应用，采用现代化的 **MVVM 架构**，深度复刻了主流短视频应用的核心体验。项目实现了沉浸式全屏播放、双列瀑布流、互动评论、个人中心等核心功能，并针对视频播放流畅度、内存管理及用户交互进行了深度优化。
 
-## Features
+## 2. 核心亮点与技术特色
 
-*   **Dual-Column Video Feed**: Browse a grid of video thumbnails.
-*   **Single-Column Video Player**: Watch videos in an immersive, full-screen player with vertical swiping.
-*   **Video Playback**: Powered by `ExoPlayer` for smooth video playback.
-*   **Comment Section**: View and add comments on videos in a `BottomSheetDialogFragment`.
+### 2.1 现代化架构设计 (MVVM)
+- **架构模式**：采用 Google 推荐的 MVVM (Model-View-ViewModel) 架构，利用 `LiveData` 和 `ViewModel` 实现数据驱动 UI，确保数据流向清晰，生命周期管理规范。
+- **模块解耦**：UI 层与业务逻辑层完全分离，提升了代码的可维护性和测试性。
 
+### 2.2 极致流畅的视频体验
+- **ExoPlayer 集成**：使用 Google ExoPlayer 内核，支持高性能视频解码与播放。
+- **无缝滑屏**：基于 `ViewPager2` 实现全屏视频的丝滑切换，结合 `Preloading`（预加载）机制，大幅减少视频起播缓冲时间，实现“秒开”体验。
+- **智能缓存**：集成 `CacheDataSource` 和 `LRU Cache`，自动缓存已加载的视频与封面，节省流量并提升二次加载速度。
+
+### 2.3 丰富多样的内容展示
+- **多 Tab 分类**：顶部导航栏支持 **推荐**、**关注**、**同城** 三大板块，每个板块独立加载不同类别的数据源，满足用户多样化的内容消费需求。
+- **双列瀑布流**：首页采用 `StaggeredGridLayoutManager` 实现双列瀑布流布局，支持下拉刷新与上拉无限加载，图片加载使用 Glide 库，并进行了圆角与尺寸优化。
+- **沉浸式转场**：点击双列列表中的视频，通过 **共享元素动画 (Shared Element Transition)** 无缝过渡到全屏播放页，视觉体验连贯自然。
+
+### 2.4 深度互动功能
+- **实时评论系统**：支持底部弹窗式评论面板，集成 `BottomSheetDialogFragment`。
+    - **真实数据**：评论列表支持下拉刷新，显示真实头像（网络资源）与点赞数。
+    - **即时交互**：支持发送评论，输入框采用高对比度文字颜色，优化输入体验。
+- **点赞与关注**：
+    - **双击点赞**：全屏播放时支持屏幕双击点赞，伴随爱心动画效果。
+    - **动态关注**：支持点击头像关注作者，按钮状态实时更新。
+
+### 2.5 个人中心与账户体系
+- **个人主页**：展示用户头像、昵称、签名及相关功能入口。
+- **头像编辑**：支持从相册选择图片，并进行裁剪与压缩处理，自动保存至本地存储。
+- **登录/注册**：提供基础的登录界面与状态管理，支持持久化登录态。
+
+
+## 3. 技术栈总结
+- **语言**：Java
+- **核心库**：AndroidX, Jetpack (ViewModel, LiveData, ViewPager2), ExoPlayer, Glide, Material Design
+- **网络与数据**：OkHttp (预留), MockData (本地模拟), SharedPreferences
 ## Getting Started
 
 ### Prerequisites

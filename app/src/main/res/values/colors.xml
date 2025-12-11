@@ -4,4 +4,6 @@
     <color name="douyinIcon">#FFFFFFFF</color>
     <color name="douyinIconLiked">#FF3B5C</color>
     <color name="douyinText">#CCFFFFFF</color>
+    <color name="douyinIconGrey">#B3B3B3</color>
+    <color name="douyinBlue">#2196F3</color>
 </resources>
